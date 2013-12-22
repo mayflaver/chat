@@ -1,0 +1,61 @@
+package main
+
+import (
+	"fmt"
+	"net"
+)
+
+func main() {
+	from_server, to_server, console := make(chan []byte), make(chan []byte), make(chan []byte)
+	conn, err := net.Dial("tcp", "127.0.0.1:8000")
+	if err != nil {
+		fmt.Println("connect error")
+		
+		// handle error
+	}
+	go func(conn net.Conn) {
+		for {
+			buf := make([]byte, 64)
+			conn.Read(buf)
+			from_server <- buf
+		}
+	}(conn)
+	go func(conn net.Conn) {
+		for {
+			buf := <- to_server
+			conn.Write(buf)
+		}
+	}(conn)
+	go func() {
+		for  {
+			str := ""
+			_, err := fmt.Scanln(&str)
+			if err != nil {
+				// handle error
+			}
+			console <- []byte(str)
+		}
+	}()
+	for {
+		select {
+		case str := <-from_server:
+			fmt.Println(str)
+		case str := <-console:
+			to_server <- str
+		}
+	}
+}
+	
+		
+
+
+		
+
+
+
+
+
+
+
+
+
