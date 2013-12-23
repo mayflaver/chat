@@ -10,8 +10,8 @@ func main() {
 	if err != nil {
 		// handle error
 	}
-	c_conn, c_msg := make(chan net.Conn), make(chan []byte)
-	conns := make([]net.Conn, 0)
+	c_conn, d_conn, c_msg := make(chan net.Conn), make(chan net.Conn), make(chan []byte)
+	conns := make(map[net.Conn]int)
 	go func() {
 		for {
 			conn, err := ln.Accept()
@@ -25,22 +25,46 @@ func main() {
 	for {
 		select {
 		case conn := <- c_conn:
-			conns = append(conns, conn)
-			fmt.Println(conns)
+			conns[conn] = 0
+			fmt.Println("connect: ", conn.RemoteAddr())
 			go func(conn net.Conn) {
 				conn.Write([]byte("welcome"))
 				for {
 					buf := make([]byte, 64)
-					conn.Read(buf)
+					_, err := conn.Read(buf)
+					if err != nil {
+						d_conn <- conn
+						return
+					}
 					c_msg <- buf
 				}
 			}(conn)
 		case msg := <- c_msg:
-			for _, conn := range conns {
-				fmt.Println(msg)
-				fmt.Println(conn)
+			for conn, _ := range conns {
 				conn.Write(msg)
 			}
+		case conn := <- d_conn:
+			fmt.Println("disconnect: ", conn.RemoteAddr())
+			delete(conns, conn)
+			
+			
 		}
 	}
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
